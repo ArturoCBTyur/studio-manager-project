@@ -1,34 +1,40 @@
 import { useEffect, useState } from 'react'
 import Modal from '../../../shared/ui/Modal'
+import { useProjectsStore } from '../../../shared/stores/projectsStore'
 
-// util: YYYY-MM-DDTHH:MM a string
 const toLocal = (d) => new Date(d).toISOString().slice(0,16)
 
 export default function SessionDrawer({ open, onClose, initial, onSubmit, dateISO }) {
+  const projects = useProjectsStore(s => s.projects)
   const defaultStart = dateISO ? `${dateISO}T10:00` : new Date().toISOString().slice(0,16)
   const defaultEnd   = dateISO ? `${dateISO}T11:00` : new Date(Date.now()+60*60*1000).toISOString().slice(0,16)
 
-  const [form, setForm] = useState({ project:'', owner:'', start:defaultStart, end:defaultEnd })
+  const [form, setForm] = useState({ projectId:'', owner:'', start:defaultStart, end:defaultEnd })
 
   useEffect(() => {
     if (initial) {
       setForm({
-        project: initial.project || '',
+        projectId: initial.projectId ? String(initial.projectId) : '',
         owner: initial.owner || '',
         start: toLocal(initial.start),
         end: toLocal(initial.end),
       })
     } else {
-      setForm({ project:'', owner:'', start: defaultStart, end: defaultEnd })
+      setForm({ projectId:'', owner:'', start: defaultStart, end: defaultEnd })
     }
     // eslint-disable-next-line
   }, [initial, open, dateISO])
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!form.project.trim()) return alert('Proyecto es obligatorio')
+    if (!form.projectId) return alert('Selecciona un proyecto')
     if (new Date(form.end) <= new Date(form.start)) return alert('Fin debe ser mayor que inicio')
-    onSubmit({ ...form, start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString() })
+    onSubmit({
+      projectId: Number(form.projectId),
+      owner: form.owner,
+      start: new Date(form.start).toISOString(),
+      end: new Date(form.end).toISOString(),
+    })
     onClose()
   }
 
@@ -36,7 +42,10 @@ export default function SessionDrawer({ open, onClose, initial, onSubmit, dateIS
     <Modal open={open} onClose={onClose} title={initial ? 'Editar sesión' : 'Nueva sesión'}>
       <form onSubmit={handleSubmit} style={{ display:'grid', gap:12 }}>
         <label style={lab}><span>Proyecto</span>
-          <input style={inp} value={form.project} onChange={e=>setForm(f=>({...f, project:e.target.value}))} placeholder="Nombre del proyecto" />
+          <select style={inp} value={form.projectId} onChange={e=>setForm(f=>({...f, projectId:e.target.value}))}>
+            <option value="">— Selecciona —</option>
+            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
         </label>
         <label style={lab}><span>Responsable</span>
           <input style={inp} value={form.owner} onChange={e=>setForm(f=>({...f, owner:e.target.value}))} placeholder="Productor/Ingeniero" />
